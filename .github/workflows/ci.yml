@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # the tool claims `>=20`; the tests use `node --test` from 18's runner,
+        # AbortSignal.timeout from 17.3, and nothing that a newer major changed
+        node-version: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Tests
+        run: node --test test/
+
+      # A link checker that cannot check its own README has stopped checking
+      # something. This is the part of the suite that fails when the CLI stops
+      # emitting anything at all, which the unit tests cannot see.
+      - name: Check this repository's own links
+        run: node src/cli.js . --root .
+
+      - name: JSON output is parseable
+        run: node src/cli.js . --json | node -e "
+          let s='';
+          process.stdin.on('data', d => s += d).on('end', () => {
+            const r = JSON.parse(s);
+            if (typeof r.summary?.problems !== 'number') throw new Error('no problem count in the JSON');
+            console.log(r.summary);
+          });"
