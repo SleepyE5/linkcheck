@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseArgs, loadConfig, merge, planTargets, run, main } from '../src/cli.js';
@@ -290,6 +292,48 @@ test('the exit code is the verdict: 0 clean, 1 findings, 2 cannot run', async ()
     writeFileSync(join(clean, 'a.md'), '# T' + EOL + EOL + '[self](#t)' + EOL);
     assert.equal(await captureCode(['--root', clean, clean], clean), 0);
     rmSync(clean, { recursive: true, force: true });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('reached through a symlink, it still does its job', () => {
+  // node_modules/.bin/linkcheck is a symlink. If the entry-point check compares
+  // paths lexically, an installed CLI exits 0 having printed nothing, which a
+  // reader will take for a clean tree.
+  const dir = mkdtempSync(join(tmpdir(), 'linkcheck-bin-'));
+  const bin = join(dir, 'linkcheck');
+  symlinkSync(fileURLToPath(new URL('../src/cli.js', import.meta.url)), bin);
+  const tree = demoTree();
+  try {
+    const broken = spawnSync(process.execPath, [bin, tree, '--root', tree, '--no-color'], { encoding: 'utf8' });
+    assert.equal(broken.status, 1, broken.stderr);
+    assert.match(broken.stdout, /missing-file/);
+
+    const clean = mkdtempSync(join(tmpdir(), 'linkcheck-bin2-'));
+    writeFileSync(join(clean, 'a.md'), '# T' + EOL + EOL + '[self](#t)' + EOL);
+    const ok = spawnSync(process.execPath, [bin, clean, '--root', clean, '--no-color'], { encoding: 'utf8' });
+    assert.equal(ok.status, 0, ok.stderr);
+    assert.match(ok.stdout, /no broken links/);
+
+    const help = spawnSync(process.execPath, [bin, '--help'], { encoding: 'utf8' });
+    assert.equal(help.status, 0);
+    assert.match(help.stdout, /find broken relative links/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(tree, { recursive: true, force: true });
+  }
+});
+
+test('a bad flag goes to stderr and says how to get help', () => {
+  const dir = demoTree();
+  let out = '', err = '';
+  try {
+    const r = spawnSync(process.execPath, [fileURLToPath(new URL('../src/cli.js', import.meta.url)), '--nope'],
+      { encoding: 'utf8', cwd: dir });
+    out = r.stdout; err = r.stderr;
+    assert.equal(r.status, 2);
+    assert.equal(out, '', 'a usage error must not pollute stdout');
+    assert.match(err, /unknown option: --nope/);
+    assert.match(err, /linkcheck --help/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

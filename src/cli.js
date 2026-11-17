@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -311,10 +311,14 @@ export async function main(argv = process.argv.slice(2), io = {}) {
   return result.findings.length ? 1 : 0;
 }
 
-// `npm link` and a global install both put a symlink in PATH, so the entry test
-// has to compare real paths, not the string argv was handed.
+// `npm link`, a global install and `node_modules/.bin` all reach this file
+// through a symlink, so argv[1] and import.meta.url name different paths for the
+// same module. Comparing them lexically makes the CLI silently do nothing when
+// installed, which is the worst possible failure for a tool whose whole job is
+// to say something.
+const real = (p) => { try { return realpathSync(p); } catch { return p; } };
 const invokedDirectly = process.argv[1]
-  && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
+  && real(resolve(process.argv[1])) === real(fileURLToPath(import.meta.url));
 if (invokedDirectly) {
   main().then((code) => { process.exitCode = code; }, (err) => {
     process.stderr.write(`linkcheck: ${err?.stack ?? err}\n`);
