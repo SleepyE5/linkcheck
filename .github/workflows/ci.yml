@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # the tool claims `>=20`; the tests use `node --test` from 18's runner,
-        # AbortSignal.timeout from 17.3, and nothing that a newer major changed
+        # the tool claims `>=20`; the tests need `node --test` discovery and
+        # AbortSignal.timeout, and nothing a newer major changed
         node-version: ['20', '22', '24']
     steps:
       - uses: actions/checkout@v4
@@ -22,8 +22,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      # No path argument: `node --test test/` runs the suite on 20 and dies on
+      # 22 and 24 with "Cannot find module .../test", because those versions take
+      # the argument as a file to execute. Discovery is the portable form.
       - name: Tests
-        run: node --test test/
+        run: node --test
 
       # A link checker that cannot check its own README has stopped checking
       # something. This is the part of the suite that fails when the CLI stops
