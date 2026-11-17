@@ -1,0 +1,14 @@
+{
+  "name": "linkcheck-md",
+  "version": "0.1.0",
+  "description": "Find broken relative links and missing images in Markdown, before a reader does.",
+  "type": "module",
+  "bin": { "linkcheck": "./src/cli.js" },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "files": ["src"],
+  "keywords": ["markdown", "links", "lint", "cli", "documentation"],
+  "license": "MIT"
+}
