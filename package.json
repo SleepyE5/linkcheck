@@ -3,12 +3,33 @@
   "version": "0.1.0",
   "description": "Find broken relative links and missing images in Markdown, before a reader does.",
   "type": "module",
-  "bin": { "linkcheck": "./src/cli.js" },
-  "engines": { "node": ">=20" },
-  "scripts": {
-    "test": "node --test test/"
+  "bin": {
+    "linkcheck": "./src/cli.js"
   },
-  "files": ["src"],
-  "keywords": ["markdown", "links", "lint", "cli", "documentation"],
-  "license": "MIT"
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/",
+    "check-docs": "node src/cli.js ."
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "markdown",
+    "links",
+    "lint",
+    "cli",
+    "documentation"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SleepyE5/linkcheck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SleepyE5/linkcheck/issues"
+  },
+  "homepage": "https://github.com/SleepyE5/linkcheck#readme"
 }
